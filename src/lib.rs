@@ -650,15 +650,17 @@ pub unsafe extern "C" fn wgpuCreateInstance(
 ) -> native::WGPUInstance {
     let instance_desc = match descriptor {
         Some(descriptor) => {
-            if descriptor.features.timedWaitAnyEnable != 0 || descriptor.features.timedWaitAnyMaxCount > 0 {
+            if descriptor.features.timedWaitAnyEnable != 0
+                || descriptor.features.timedWaitAnyMaxCount > 0
+            {
                 panic!("Unsupported timed WaitAny features specified");
             }
 
             follow_chain!(map_instance_descriptor(
-                    (descriptor),
-                    WGPUSType_InstanceExtras => native::WGPUInstanceExtras
-                ))
-        },
+                (descriptor),
+                WGPUSType_InstanceExtras => native::WGPUInstanceExtras
+            ))
+        }
         None => wgt::InstanceDescriptor::default(),
     };
 
@@ -676,7 +678,7 @@ pub unsafe extern "C" fn wgpuGetInstanceFeatures(
         nextInChain: std::ptr::null_mut(),
         // WaitAny is currently completely unsupported, so...
         timedWaitAnyEnable: false as native::WGPUBool,
-        timedWaitAnyMaxCount: 0
+        timedWaitAnyMaxCount: 0,
     }
 }
 
