@@ -649,16 +649,35 @@ pub unsafe extern "C" fn wgpuCreateInstance(
     descriptor: Option<&native::WGPUInstanceDescriptor>,
 ) -> native::WGPUInstance {
     let instance_desc = match descriptor {
-        Some(descriptor) => follow_chain!(map_instance_descriptor(
-            (descriptor),
-            WGPUSType_InstanceExtras => native::WGPUInstanceExtras
-        )),
+        Some(descriptor) => {
+            if descriptor.features.timedWaitAnyEnable != 0 || descriptor.features.timedWaitAnyMaxCount > 0 {
+                panic!("Unsupported timed WaitAny features specified");
+            }
+
+            follow_chain!(map_instance_descriptor(
+                    (descriptor),
+                    WGPUSType_InstanceExtras => native::WGPUInstanceExtras
+                ))
+        },
         None => wgt::InstanceDescriptor::default(),
     };
 
     Arc::into_raw(Arc::new(WGPUInstanceImpl {
         context: Arc::new(Context::new("wgpu", instance_desc)),
     }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuGetInstanceFeatures(
+    features: Option<&mut native::WGPUInstanceFeatures>,
+) {
+    let features = features.expect("invalid return pointer \"features\"");
+    *features = native::WGPUInstanceFeatures {
+        nextInChain: std::ptr::null_mut(),
+        // WaitAny is currently completely unsupported, so...
+        timedWaitAnyEnable: false as native::WGPUBool,
+        timedWaitAnyMaxCount: 0
+    }
 }
 
 // Adapter methods
