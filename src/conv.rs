@@ -1367,16 +1367,16 @@ pub fn map_bind_group_layout_entry(
     entry: &native::WGPUBindGroupLayoutEntry,
     extras: Option<&native::WGPUBindGroupLayoutEntryExtras>,
 ) -> wgt::BindGroupLayoutEntry {
-    let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
-    let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_Undefined;
-    let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_Undefined;
+    let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_BindingNotUsed;
+    let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_BindingNotUsed;
+    let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_BindingNotUsed;
     let is_storage_texture =
-        entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
+        entry.storageTexture.access != native::WGPUStorageTextureAccess_BindingNotUsed;
 
     let ty = if is_texture {
         wgt::BindingType::Texture {
             sample_type: match entry.texture.sampleType {
-                native::WGPUTextureSampleType_Float => {
+                native::WGPUTextureSampleType_Float | native::WGPUTextureSampleType_Undefined => {
                     wgt::TextureSampleType::Float { filterable: true }
                 }
                 native::WGPUTextureSampleType_UnfilterableFloat => {
@@ -1400,7 +1400,7 @@ pub fn map_bind_group_layout_entry(
         }
     } else if is_sampler {
         match entry.sampler.type_ {
-            native::WGPUSamplerBindingType_Filtering => {
+            native::WGPUSamplerBindingType_Filtering | native::WGPUSamplerBindingType_Undefined => {
                 wgt::BindingType::Sampler(wgt::SamplerBindingType::Filtering)
             }
             native::WGPUSamplerBindingType_NonFiltering => {
@@ -1414,7 +1414,7 @@ pub fn map_bind_group_layout_entry(
     } else if is_storage_texture {
         wgt::BindingType::StorageTexture {
             access: map_storage_texture_access(entry.storageTexture.access)
-                .expect("invalid storage texture access for storage texture binding layout"),
+                .unwrap_or(wgt::StorageTextureAccess::WriteOnly),
             format: map_texture_format(entry.storageTexture.format)
                 .expect("invalid texture format for storage texture binding layout"),
             view_dimension: match entry.storageTexture.viewDimension {
@@ -1432,7 +1432,9 @@ pub fn map_bind_group_layout_entry(
     } else if is_buffer {
         wgt::BindingType::Buffer {
             ty: match entry.buffer.type_ {
-                native::WGPUBufferBindingType_Uniform => wgt::BufferBindingType::Uniform,
+                native::WGPUBufferBindingType_Uniform | native::WGPUBufferBindingType_Undefined => {
+                    wgt::BufferBindingType::Uniform
+                }
                 native::WGPUBufferBindingType_Storage => {
                     wgt::BufferBindingType::Storage { read_only: false }
                 }
