@@ -2225,15 +2225,16 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             ),
         },
         primitive: wgt::PrimitiveState {
-            topology: conv::map_primitive_topology(descriptor.primitive.topology),
+            topology: conv::map_primitive_topology(descriptor.primitive.topology)
+                .unwrap_or(wgt::PrimitiveTopology::TriangleList),
             strip_index_format: conv::map_index_format(descriptor.primitive.stripIndexFormat).ok(),
             front_face: match descriptor.primitive.frontFace {
-                native::WGPUFrontFace_CCW => wgt::FrontFace::Ccw,
+                native::WGPUFrontFace_CCW | native::WGPUFrontFace_Undefined => wgt::FrontFace::Ccw,
                 native::WGPUFrontFace_CW => wgt::FrontFace::Cw,
                 _ => panic!("invalid front face for primitive state"),
             },
             cull_mode: match descriptor.primitive.cullMode {
-                native::WGPUCullMode_None => None,
+                native::WGPUCullMode_None | native::WGPUCullMode_Undefined => None,
                 native::WGPUCullMode_Front => Some(wgt::Face::Front),
                 native::WGPUCullMode_Back => Some(wgt::Face::Back),
                 _ => panic!("invalid cull mode for primitive state"),
@@ -2260,8 +2261,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             wgt::DepthStencilState {
                 format,
                 depth_write_enabled: desc.depthWriteEnabled == native::WGPUOptionalBool_True,
+                // TODO: Is validation correct if we return always for undefined depth compare?
                 depth_compare: conv::map_compare_function(desc.depthCompare)
-                    .expect("invalid depth compare function for depth stencil state"),
+                    .expect("invalid depth compare function for depth stencil state")
+                    .unwrap_or(wgt::CompareFunction::Always),
                 stencil: wgt::StencilState {
                     front: conv::map_stencil_face_state(desc.stencilFront, "front"),
                     back: conv::map_stencil_face_state(desc.stencilBack, "back"),
@@ -2369,16 +2372,23 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
         Some(descriptor) => wgc::resource::SamplerDescriptor {
             label: string_view_into_label(descriptor.label),
             address_modes: [
-                conv::map_address_mode(descriptor.addressModeU),
-                conv::map_address_mode(descriptor.addressModeV),
-                conv::map_address_mode(descriptor.addressModeW),
+                conv::map_address_mode(descriptor.addressModeU)
+                    .unwrap_or(wgt::AddressMode::ClampToEdge),
+                conv::map_address_mode(descriptor.addressModeV)
+                    .unwrap_or(wgt::AddressMode::ClampToEdge),
+                conv::map_address_mode(descriptor.addressModeW)
+                    .unwrap_or(wgt::AddressMode::ClampToEdge),
             ],
-            mag_filter: conv::map_filter_mode(descriptor.magFilter),
-            min_filter: conv::map_filter_mode(descriptor.minFilter),
-            mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter),
+            mag_filter: conv::map_filter_mode(descriptor.magFilter)
+                .unwrap_or(wgt::FilterMode::Nearest),
+            min_filter: conv::map_filter_mode(descriptor.minFilter)
+                .unwrap_or(wgt::FilterMode::Nearest),
+            mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter)
+                .unwrap_or(wgt::FilterMode::Nearest),
             lod_min_clamp: descriptor.lodMinClamp,
             lod_max_clamp: descriptor.lodMaxClamp,
-            compare: conv::map_compare_function(descriptor.compare).ok(),
+            compare: conv::map_compare_function(descriptor.compare)
+                .expect("Invalid compare function"),
             anisotropy_clamp: descriptor.maxAnisotropy,
             // TODO(wgpu.h)
             border_color: None,
@@ -2486,7 +2496,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
         size: conv::map_extent3d(&descriptor.size),
         mip_level_count: descriptor.mipLevelCount,
         sample_count: descriptor.sampleCount,
-        dimension: conv::map_texture_dimension(descriptor.dimension),
+        dimension: conv::map_texture_dimension(descriptor.dimension)
+            .unwrap_or(wgt::TextureDimension::D2),
         format: conv::map_texture_format(descriptor.format)
             .expect("invalid texture format for texture descriptor"),
         usage: from_u64_bits(descriptor.usage)
@@ -4149,7 +4160,8 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
                 format: conv::map_texture_format(descriptor.format),
                 dimension: conv::map_texture_view_dimension(descriptor.dimension),
                 range: wgt::ImageSubresourceRange {
-                    aspect: conv::map_texture_aspect(descriptor.aspect),
+                    aspect: conv::map_texture_aspect(descriptor.aspect)
+                        .unwrap_or(wgt::TextureAspect::All),
                     base_mip_level: descriptor.baseMipLevel,
                     mip_level_count: match descriptor.mipLevelCount {
                         0 => panic!("invalid mipLevelCount"),

@@ -270,6 +270,47 @@ macro_rules! map_enum {
     };
 }
 
+/// Equivalent to [map_enum], but it returns [Option<T>] and "undefined" values are converted to [None].
+#[macro_export]
+macro_rules! map_enum_with_undefined {
+    ($name:ident, $c_name:ident, $rs_type:ty, $($variant:ident),+) => {
+        #[inline]
+        pub fn $name(value: native::$c_name) -> Result<Option<$rs_type>, native::$c_name> {
+            match value {
+                paste::paste!(native::[<$c_name _ Undefined>]) => Ok(None),
+                $(paste::paste!(native::[<$c_name _ $variant>]) => Ok(Some(<$rs_type>::$variant))),+,
+                x => Err(x),
+            }
+        }
+    };
+    ($name:ident, $c_name:ident, $rs_type:ty, $err_msg:literal, $($variant:ident),+) => {
+        #[inline]
+        pub fn $name(value: native::$c_name) -> Option<$rs_type> {
+            map_enum_with_undefined!(map_fn, $c_name, $rs_type, $($variant),+);
+
+            map_fn(value).expect($err_msg)
+        }
+    };
+    ($name:ident, $c_name:ident, $rs_type:ty, $($native_variant:ident:$variant2:ident),+) => {
+        #[inline]
+        pub fn $name(value: native::$c_name) -> Result<Option<$rs_type>, native::$c_name> {
+            match value {
+                paste::paste!(native::[<$c_name _ Undefined>]) => Ok(None),
+                $(paste::paste!(native::[<$c_name _ $native_variant>]) => Ok(Some(<$rs_type>::$variant2))),+,
+                x => Err(x),
+            }
+        }
+    };
+    ($name:ident, $c_name:ident, $rs_type:ty, $err_msg:literal, $($native_variant:ident:$variant2:ident),+) => {
+        #[inline]
+        pub fn $name(value: native::$c_name) -> Option<$rs_type> {
+            map_enum_with_undefined!(map_fn, $c_name, $rs_type, $($native_variant:$variant2),+);
+
+            map_fn(value).expect($err_msg)
+        }
+    };
+}
+
 pub unsafe fn string_view_into_str<'a>(string_view: native::WGPUStringView) -> Option<&'a str> {
     if string_view.data.is_null() {
         match string_view.length {

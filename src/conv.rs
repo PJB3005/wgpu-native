@@ -1,5 +1,5 @@
 use crate::utils::{make_slice, string_view_into_label, string_view_into_str};
-use crate::{follow_chain, map_enum, new_userdata};
+use crate::{follow_chain, map_enum, map_enum_with_undefined, new_userdata};
 use crate::{native, UncapturedErrorCallback};
 use std::borrow::Cow;
 use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
@@ -14,7 +14,7 @@ map_enum!(
     Discard,
     Store
 );
-map_enum!(
+map_enum_with_undefined!(
     map_address_mode,
     WGPUAddressMode,
     wgt::AddressMode,
@@ -23,7 +23,7 @@ map_enum!(
     Repeat,
     MirrorRepeat
 );
-map_enum!(
+map_enum_with_undefined!(
     map_filter_mode,
     WGPUFilterMode,
     wgt::FilterMode,
@@ -31,7 +31,7 @@ map_enum!(
     Nearest,
     Linear
 );
-map_enum!(
+map_enum_with_undefined!(
     map_mipmap_filter_mode,
     WGPUMipmapFilterMode,
     wgt::FilterMode,
@@ -39,7 +39,7 @@ map_enum!(
     Nearest,
     Linear
 );
-map_enum!(
+map_enum_with_undefined!(
     map_compare_function,
     WGPUCompareFunction,
     wgt::CompareFunction,
@@ -52,7 +52,7 @@ map_enum!(
     GreaterEqual,
     Always
 );
-map_enum!(
+map_enum_with_undefined!(
     map_texture_aspect,
     WGPUTextureAspect,
     wgt::TextureAspect,
@@ -61,7 +61,7 @@ map_enum!(
     StencilOnly,
     DepthOnly
 );
-map_enum!(
+map_enum_with_undefined!(
     map_present_mode,
     WGPUPresentMode,
     wgt::PresentMode,
@@ -71,7 +71,7 @@ map_enum!(
     Fifo,
     FifoRelaxed
 );
-map_enum!(
+map_enum_with_undefined!(
     map_primitive_topology,
     WGPUPrimitiveTopology,
     wgt::PrimitiveTopology,
@@ -89,7 +89,7 @@ map_enum!(
     Uint16,
     Uint32
 );
-map_enum!(
+map_enum_with_undefined!(
     map_blend_factor,
     WGPUBlendFactor,
     wgt::BlendFactor,
@@ -108,7 +108,7 @@ map_enum!(
     Constant: Constant,
     OneMinusConstant: OneMinusConstant
 );
-map_enum!(
+map_enum_with_undefined!(
     map_blend_operation,
     WGPUBlendOperation,
     wgt::BlendOperation,
@@ -119,10 +119,11 @@ map_enum!(
     Min,
     Max
 );
-map_enum!(
+map_enum_with_undefined!(
     map_stencil_operation,
     WGPUStencilOperation,
     wgt::StencilOperation,
+    "Unknown stencil operation",
     Keep,
     Zero,
     Replace,
@@ -201,10 +202,11 @@ map_enum!(
     Version2
 );
 
-map_enum!(
+map_enum_with_undefined!(
     map_storage_texture_access,
     WGPUStorageTextureAccess,
     wgt::StorageTextureAccess,
+    "Unknown storage texture access",
     WriteOnly,
     ReadOnly,
     ReadWrite
@@ -641,7 +643,7 @@ pub unsafe fn map_image_copy_texture(
             .id,
         mip_level: native.mipLevel,
         origin: map_origin3d(&native.origin),
-        aspect: map_texture_aspect(native.aspect),
+        aspect: map_texture_aspect(native.aspect).unwrap_or(wgt::TextureAspect::All),
     }
 }
 
@@ -689,9 +691,9 @@ pub fn map_color(native: &native::WGPUColor) -> wgt::Color {
 #[inline]
 pub fn map_blend_component(native: native::WGPUBlendComponent) -> wgt::BlendComponent {
     wgt::BlendComponent {
-        src_factor: map_blend_factor(native.srcFactor),
-        dst_factor: map_blend_factor(native.dstFactor),
-        operation: map_blend_operation(native.operation),
+        src_factor: map_blend_factor(native.srcFactor).unwrap_or(wgt::BlendFactor::One),
+        dst_factor: map_blend_factor(native.dstFactor).unwrap_or(wgt::BlendFactor::Zero),
+        operation: map_blend_operation(native.operation).unwrap_or(wgt::BlendOperation::Add),
     }
 }
 
@@ -699,6 +701,8 @@ pub fn map_blend_component(native: native::WGPUBlendComponent) -> wgt::BlendComp
 pub fn map_texture_view_dimension(
     value: native::WGPUTextureViewDimension,
 ) -> Option<wgt::TextureViewDimension> {
+    // This doesn't use map_enum_with_undefined! because the enum name after the _
+    // isn't a valid ident on its own for the macro.
     match value {
         native::WGPUTextureViewDimension_1D => Some(wgt::TextureViewDimension::D1),
         native::WGPUTextureViewDimension_2D => Some(wgt::TextureViewDimension::D2),
@@ -706,16 +710,20 @@ pub fn map_texture_view_dimension(
         native::WGPUTextureViewDimension_Cube => Some(wgt::TextureViewDimension::Cube),
         native::WGPUTextureViewDimension_CubeArray => Some(wgt::TextureViewDimension::CubeArray),
         native::WGPUTextureViewDimension_3D => Some(wgt::TextureViewDimension::D3),
-        _ => None,
+        native::WGPUTextureDimension_Undefined => None,
+        _ => panic!("Unknown texture view dimension"),
     }
 }
 
 #[inline]
-pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> wgt::TextureDimension {
+pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> Option<wgt::TextureDimension> {
+    // This doesn't use map_enum_with_undefined! because the enum name after the _
+    // isn't a valid ident on its own for the macro.
     match value {
-        native::WGPUTextureDimension_1D => wgt::TextureDimension::D1,
-        native::WGPUTextureDimension_2D => wgt::TextureDimension::D2,
-        native::WGPUTextureDimension_3D => wgt::TextureDimension::D3,
+        native::WGPUTextureDimension_1D => Some(wgt::TextureDimension::D1),
+        native::WGPUTextureDimension_2D => Some(wgt::TextureDimension::D2),
+        native::WGPUTextureDimension_3D => Some(wgt::TextureDimension::D3),
+        native::WGPUTextureDimension_Undefined => None,
         x => panic!("Unknown texture dimension: {x}"),
     }
 }
@@ -726,6 +734,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
     use wgt::{AstcBlock, AstcChannel};
 
     match value {
+        native::WGPUTextureFormat_Undefined => None,
         native::WGPUTextureFormat_R8Unorm => Some(wgt::TextureFormat::R8Unorm),
         native::WGPUTextureFormat_R8Snorm => Some(wgt::TextureFormat::R8Snorm),
         native::WGPUTextureFormat_R8Uint => Some(wgt::TextureFormat::R8Uint),
@@ -830,7 +839,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUNativeTextureFormat_Rgba16Unorm => Some(wgt::TextureFormat::Rgba16Unorm),
         native::WGPUNativeTextureFormat_Rgba16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
         native::WGPUNativeTextureFormat_NV12  => Some(wgt::TextureFormat::NV12),
-        _ => None,
+        _ => panic!("Unknown texture format"),
     }
 }
 
@@ -957,13 +966,12 @@ pub fn map_stencil_face_state(
 ) -> wgt::StencilFaceState {
     wgt::StencilFaceState {
         compare: map_compare_function(value.compare)
-            .unwrap_or_else(|_| panic!("invalid compare function for {mode} stencil face state")),
-        fail_op: map_stencil_operation(value.failOp)
-            .unwrap_or_else(|_| panic!("invalid fail op for {mode} stencil face state")),
+            .unwrap_or_else(|_| panic!("invalid compare function for {mode} stencil face state"))
+            .unwrap_or(wgt::CompareFunction::Always),
+        fail_op: map_stencil_operation(value.failOp).unwrap_or(wgt::StencilOperation::Keep),
         depth_fail_op: map_stencil_operation(value.depthFailOp)
-            .unwrap_or_else(|_| panic!("invalid depth fail op for {mode} stencil face state")),
-        pass_op: map_stencil_operation(value.passOp)
-            .unwrap_or_else(|_| panic!("invalid pass op for {mode} stencil face state")),
+            .unwrap_or(wgt::StencilOperation::Keep),
+        pass_op: map_stencil_operation(value.passOp).unwrap_or(wgt::StencilOperation::Keep),
     }
 }
 
@@ -1644,18 +1652,13 @@ pub fn map_surface_configuration(
     config: &native::WGPUSurfaceConfiguration,
     extras: Option<&native::WGPUSurfaceConfigurationExtras>,
 ) -> wgt::SurfaceConfiguration<Vec<wgt::TextureFormat>> {
-    let present_mode = match config.presentMode {
-        native::WGPUPresentMode_Undefined => wgt::PresentMode::Fifo,
-        _ => map_present_mode(config.presentMode),
-    };
-
     wgt::SurfaceConfiguration {
         usage: map_texture_usage_flags(config.usage as native::WGPUTextureUsage),
         format: map_texture_format(config.format)
             .expect("invalid format for surface configuration"),
         width: config.width,
         height: config.height,
-        present_mode,
+        present_mode: map_present_mode(config.presentMode).unwrap_or(wgt::PresentMode::Fifo),
         alpha_mode: map_composite_alpha_mode(config.alphaMode)
             .expect("invalid alpha mode for surface configuration"),
         view_formats: make_slice(config.viewFormats, config.viewFormatCount)
