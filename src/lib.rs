@@ -4357,7 +4357,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
     let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {
-        label: ptr_into_label(descriptor.label),
+        label: string_view_into_label(descriptor.label),
         shader_bound_checks: unsafe { wgt::ShaderBoundChecks::unchecked() },
     };
 

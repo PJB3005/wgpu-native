@@ -135,7 +135,7 @@ typedef struct WGPUDeviceExtras {
 
 typedef struct WGPUNativeLimits {
     /** This struct chain is used as mutable in some places and immutable in others. */
-    WGPUChainedStructOut * nextInChain;
+    WGPUChainedStructOut chain;
     uint32_t maxPushConstantSize;
     uint32_t maxNonSamplerBindings;
 } WGPUNativeLimits;
@@ -173,7 +173,7 @@ typedef struct WGPUShaderModuleGLSLDescriptor {
 } WGPUShaderModuleGLSLDescriptor;
 
 typedef struct WGPUShaderModuleDescriptorSpirV {
-    char const * label;
+    WGPUStringView label;
     uint32_t sourceSize;
     uint32_t const * source;
 } WGPUShaderModuleDescriptorSpirV;

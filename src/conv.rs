@@ -385,10 +385,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
 }
 
 #[inline]
-pub fn write_limits_struct(
-    wgt_limits: wgt::Limits,
-    limits: &mut native::WGPULimits,
-) {
+pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULimits) {
     limits.maxTextureDimension1D = wgt_limits.max_texture_dimension_1d;
     limits.maxTextureDimension2D = wgt_limits.max_texture_dimension_2d;
     limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
