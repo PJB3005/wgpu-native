@@ -715,7 +715,7 @@ fn return_features(native: &mut native::WGPUSupportedFeatures, features: wgt::Fe
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetLimits(
     adapter: native::WGPUAdapter,
-    limits: Option<&mut native::WGPUSupportedLimits>,
+    limits: Option<&mut native::WGPULimits>,
 ) -> native::WGPUBool {
     let (adapter_id, context) = {
         let adapter = adapter.as_ref().expect("invalid adapter");
@@ -2572,7 +2572,7 @@ pub unsafe extern "C" fn wgpuSupportedFeaturesFreeMembers(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetLimits(
     device: native::WGPUDevice,
-    limits: Option<&mut native::WGPUSupportedLimits>,
+    limits: Option<&mut native::WGPULimits>,
 ) -> native::WGPUBool {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");

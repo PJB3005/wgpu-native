@@ -6,10 +6,9 @@
 typedef enum WGPUNativeSType {
     // Start at 0003 since that's allocated range for wgpu-native
     WGPUSType_DeviceExtras = 0x00030001,
-    WGPUSType_RequiredLimitsExtras = 0x00030002,
+    WGPUSType_NativeLimits = 0x00030002,
     WGPUSType_PipelineLayoutExtras = 0x00030003,
     WGPUSType_ShaderModuleGLSLDescriptor = 0x00030004,
-    WGPUSType_SupportedLimitsExtras = 0x00030005,
     WGPUSType_InstanceExtras = 0x00030006,
     WGPUSType_BindGroupEntryExtras = 0x00030007,
     WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
@@ -132,19 +131,11 @@ typedef struct WGPUDeviceExtras {
 } WGPUDeviceExtras;
 
 typedef struct WGPUNativeLimits {
+    /** This struct chain is used as mutable in some places and immutable in others. */
+    WGPUChainedStructOut * nextInChain;
     uint32_t maxPushConstantSize;
     uint32_t maxNonSamplerBindings;
 } WGPUNativeLimits;
-
-typedef struct WGPURequiredLimitsExtras {
-    WGPUChainedStruct chain;
-    WGPUNativeLimits limits;
-} WGPURequiredLimitsExtras;
-
-typedef struct WGPUSupportedLimitsExtras {
-    WGPUChainedStructOut chain;
-    WGPUNativeLimits limits;
-} WGPUSupportedLimitsExtras;
 
 typedef struct WGPUPushConstantRange {
     WGPUShaderStage stages;

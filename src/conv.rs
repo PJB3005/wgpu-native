@@ -332,7 +332,7 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
                 Some(required_limits) => unsafe {
                     follow_chain!(
                         map_required_limits((required_limits, base_limits),
-                        WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
+                        WGPUSType_NativeLimits => native::WGPUNativeLimits)
                     )
                 },
                 None => base_limits,
@@ -387,9 +387,8 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
 #[inline]
 pub fn write_limits_struct(
     wgt_limits: wgt::Limits,
-    supported_limits: &mut native::WGPUSupportedLimits,
+    limits: &mut native::WGPULimits,
 ) {
-    let mut limits = supported_limits.limits;
     limits.maxTextureDimension1D = wgt_limits.max_texture_dimension_1d;
     limits.maxTextureDimension2D = wgt_limits.max_texture_dimension_2d;
     limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
@@ -427,33 +426,29 @@ pub fn write_limits_struct(
     limits.maxComputeWorkgroupSizeY = wgt_limits.max_compute_workgroup_size_y;
     limits.maxComputeWorkgroupSizeZ = wgt_limits.max_compute_workgroup_size_z;
     limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
-    supported_limits.limits = limits;
 
     if let Some(native::WGPUChainedStructOut {
-        sType: native::WGPUSType_SupportedLimitsExtras,
+        sType: native::WGPUSType_NativeLimits,
         ..
-    }) = unsafe { supported_limits.nextInChain.as_ref() }
+    }) = unsafe { limits.nextInChain.as_ref() }
     {
         unsafe {
-            let extras = std::mem::transmute::<
+            let native_limits = std::mem::transmute::<
                 *mut native::WGPUChainedStructOut,
-                *mut native::WGPUSupportedLimitsExtras,
-            >(supported_limits.nextInChain);
-            (*extras).limits = native::WGPUNativeLimits {
-                maxPushConstantSize: wgt_limits.max_push_constant_size,
-                maxNonSamplerBindings: wgt_limits.max_non_sampler_bindings,
-            };
+                *mut native::WGPUNativeLimits,
+            >(limits.nextInChain);
+            (*native_limits).maxPushConstantSize = wgt_limits.max_push_constant_size;
+            (*native_limits).maxNonSamplerBindings = wgt_limits.max_non_sampler_bindings;
         }
     };
 }
 
 #[inline]
 pub fn map_required_limits(
-    required_limits: &native::WGPURequiredLimits,
+    limits: &native::WGPULimits,
     base_limits: wgt::Limits,
-    extras: Option<&native::WGPURequiredLimitsExtras>,
+    extras: Option<&native::WGPUNativeLimits>,
 ) -> wgt::Limits {
-    let limits = required_limits.limits;
     let mut wgt_limits = base_limits;
     if limits.maxTextureDimension1D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_1d = limits.maxTextureDimension1D;
@@ -554,8 +549,7 @@ pub fn map_required_limits(
     if limits.maxComputeWorkgroupsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroups_per_dimension = limits.maxComputeWorkgroupsPerDimension;
     }
-    if let Some(extras) = extras {
-        let limits = extras.limits;
+    if let Some(limits) = extras {
         if limits.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_push_constant_size = limits.maxPushConstantSize;
         }

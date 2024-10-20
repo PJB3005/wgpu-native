@@ -166,7 +166,7 @@ macro_rules! follow_chain {
             $(
                 let mut $stype: Option<&$ty> = None;
             )*
-            let mut chain_opt: Option<&$crate::native::WGPUChainedStruct> = $base1.nextInChain.as_ref();
+            let mut chain_opt: Option<&$crate::native::WGPUChainedStruct> = ($base1.nextInChain as *const $crate::native::WGPUChainedStruct).as_ref();
             while let Some(next_in_chain) = chain_opt {
                 match next_in_chain.sType {
                     $(
