@@ -674,12 +674,9 @@ pub unsafe extern "C" fn wgpuGetInstanceFeatures(
     features: Option<&mut native::WGPUInstanceFeatures>,
 ) {
     let features = features.expect("invalid return pointer \"features\"");
-    *features = native::WGPUInstanceFeatures {
-        nextInChain: std::ptr::null_mut(),
-        // WaitAny is currently completely unsupported, so...
-        timedWaitAnyEnable: false as native::WGPUBool,
-        timedWaitAnyMaxCount: 0,
-    }
+    // WaitAny is currently completely unsupported, so...
+    features.timedWaitAnyEnable = false as native::WGPUBool;
+    features.timedWaitAnyMaxCount = 0;
 }
 
 // Adapter methods
@@ -700,18 +697,19 @@ pub unsafe extern "C" fn wgpuAdapterGetFeatures(
         Err(err) => handle_error_fatal(err, "wgpuAdapterEnumerateFeatures"),
     };
 
-    let temp = conv::features_to_native(adapter_features);
-    let mut temp = temp.into_boxed_slice();
-
-    *features = native::WGPUSupportedFeatures {
-        nextInChain: std::ptr::null_mut(),
-        featureCount: temp.len(),
-        features: temp.as_mut_ptr(),
-    };
-
-    mem::forget(temp);
+    return_features(features, adapter_features);
 
     native::WGPUStatus_Success
+}
+
+fn return_features(native: &mut native::WGPUSupportedFeatures, features: wgt::Features) {
+    let temp = conv::features_to_native(features);
+    let mut temp = temp.into_boxed_slice();
+
+    native.featureCount = temp.len();
+    native.features = temp.as_mut_ptr();
+
+    mem::forget(temp);
 }
 
 #[no_mangle]
@@ -2554,16 +2552,7 @@ pub unsafe extern "C" fn wgpuDeviceGetFeatures(
         Err(err) => handle_error_fatal(err, "wgpuDeviceEnumerateFeatures"),
     };
 
-    let temp = conv::features_to_native(device_features);
-    let mut temp = temp.into_boxed_slice();
-
-    *features = native::WGPUSupportedFeatures {
-        nextInChain: std::ptr::null_mut(),
-        featureCount: temp.len(),
-        features: temp.as_mut_ptr(),
-    };
-
-    mem::forget(temp);
+    return_features(features, device_features);
 
     native::WGPUStatus_Success
 }
