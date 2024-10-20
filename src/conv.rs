@@ -94,19 +94,23 @@ map_enum_with_undefined!(
     WGPUBlendFactor,
     wgt::BlendFactor,
     "Unknown blend factor",
-    Zero: Zero,
-    One: One,
-    Src: Src,
-    OneMinusSrc: OneMinusSrc,
-    SrcAlpha: SrcAlpha,
-    OneMinusSrcAlpha: OneMinusSrcAlpha,
-    Dst: Dst,
-    OneMinusDst: OneMinusDst,
-    DstAlpha: DstAlpha,
-    OneMinusDstAlpha: OneMinusDstAlpha,
-    SrcAlphaSaturated: SrcAlphaSaturated,
-    Constant: Constant,
-    OneMinusConstant: OneMinusConstant
+    Zero,
+    One,
+    Src,
+    OneMinusSrc,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+    Dst,
+    OneMinusDst,
+    DstAlpha,
+    OneMinusDstAlpha,
+    SrcAlphaSaturated,
+    Constant,
+    OneMinusConstant,
+    Src1,
+    OneMinusSrc1,
+    Src1Alpha,
+    OneMinusSrc1Alpha
 );
 map_enum_with_undefined!(
     map_blend_operation,
@@ -1101,7 +1105,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::FLOAT32_FILTERABLE) {
         temp.push(native::WGPUFeatureName_Float32Filterable);
     }
-
+    if features.contains(wgt::Features::DUAL_SOURCE_BLENDING) {
+        temp.push(native::WGPUFeatureName_DualSourceBlending);
+    }
     // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
         temp.push(native::WGPUNativeFeature_PushConstants);
@@ -1227,7 +1233,10 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_F16),
         native::WGPUFeatureName_RG11B10UfloatRenderable => Some(Features::RG11B10UFLOAT_RENDERABLE),
         native::WGPUFeatureName_BGRA8UnormStorage => Some(Features::BGRA8UNORM_STORAGE),
+        // TODO: WGPUFeatureName_ClipDistances
+        // TODO: WGPUFeatureName_Float32Blendable
         native::WGPUFeatureName_Float32Filterable => Some(Features::FLOAT32_FILTERABLE),
+        native::WGPUFeatureName_DualSourceBlending => Some(Features::DUAL_SOURCE_BLENDING),
 
         // wgpu-rs only features
         native::WGPUNativeFeature_PushConstants => Some(Features::PUSH_CONSTANTS),
