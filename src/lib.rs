@@ -4346,6 +4346,42 @@ pub unsafe extern "C" fn wgpuDevicePoll(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUShaderModuleDescriptorSpirV>,
+) -> native::WGPUShaderModule {
+    let (device_id, context, error_sink) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context, &device.error_sink)
+    };
+    let descriptor = descriptor.expect("invalid descriptor");
+
+    let desc = wgc::pipeline::ShaderModuleDescriptor {
+        label: ptr_into_label(descriptor.label),
+        shader_bound_checks: unsafe { wgt::ShaderBoundChecks::unchecked() },
+    };
+
+    let source = Cow::Borrowed(make_slice(
+        descriptor.source,
+        descriptor.sourceSize as usize,
+    ));
+    let (shader_module_id, error) = gfx_select!(device_id => context.device_create_shader_module_spirv(device_id, &desc, source, None));
+    if let Some(cause) = error {
+        handle_error(
+            error_sink,
+            cause,
+            desc.label,
+            "wgpuDeviceCreateShaderModuleSpirV",
+        );
+    }
+
+    Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
+        context: context.clone(),
+        id: Some(shader_module_id),
+    }))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     pass: native::WGPURenderPassEncoder,
     stages: native::WGPUShaderStage,
@@ -4368,6 +4404,27 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
             cause,
             None,
             "wgpuRenderPassEncoderSetPushConstants",
+        ),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderSetPushConstants(
+    pass: native::WGPUComputePassEncoder,
+    offset: u32,
+    size_bytes: u32,
+    data: *const u8,
+) {
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let encoder = pass.encoder.as_mut().unwrap();
+
+    match encoder.set_push_constants(&pass.context, offset, make_slice(data, size_bytes as usize)) {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuComputePassEncoderSetPushConstants",
         ),
     }
 }
@@ -4430,7 +4487,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirectCount(
     let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
     let encoder = pass.encoder.as_mut().unwrap();
 
-    match encoder.multi_draw_indexed_indirect_count(
+    match encoder.multi_draw_indirect_count(
         &pass.context,
         buffer_id,
         offset,
@@ -4554,6 +4611,48 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
             cause,
             None,
             "wgpuRenderPassEncoderEndPipelineStatisticsQuery",
+        ),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderWriteTimestamp(
+    pass: native::WGPUComputePassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let query_set_id = query_set.as_ref().expect("invalid query set").id;
+    let encoder = pass.encoder.as_mut().unwrap();
+
+    match encoder.write_timestamp(&pass.context, query_set_id, query_index) {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuComputePassEncoderWriteTimestamp",
+        ),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderWriteTimestamp(
+    pass: native::WGPURenderPassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let query_set_id = query_set.as_ref().expect("invalid query set").id;
+    let encoder = pass.encoder.as_mut().unwrap();
+
+    match encoder.write_timestamp(&pass.context, query_set_id, query_index) {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuRenderPassEncoderWriteTimestamp",
         ),
     }
 }
